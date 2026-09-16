@@ -1,0 +1,148 @@
+--lab2 design
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity decoder_3to8 is
+    port(din : in std_logic_vector(2 downto 0);
+         en : in std_logic;
+         dout: out std_logic_vector(7 downto 0));
+end decoder_3to8;
+
+architecture dataflow of decoder_3to8 is
+   signal enw : std_logic_vector(3 downto 0);
+begin
+    enw <= en & din;
+    with enw select
+        dout <= "00000001" when "1000",
+                "00000010" when "1001",
+                "00000100" when "1010",
+                "00001000" when "1011",
+                "00010000" when "1100",
+                "00100000" when "1101",
+                "01000000" when "1110",
+                "10000000" when "1111",
+                "00000000" when others;
+end dataflow;
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+entity reg_module is
+    generic(reg_size:integer:=4);
+    port(din    :in std_logic_vector(reg_size-1 downto 0);
+        clk,rst,we:in std_logic;
+        dout    :out std_logic_vector(reg_size-1 downto 0));
+end reg_module;
+
+architecture Behavioral of reg_module is
+begin
+    p1:process(rst,clk)
+    begin
+        if rst = '0' then
+            dout <= (others => '0');
+        elsif rising_edge(clk) then
+            if we = '1' then
+                dout <= din;
+            end if;
+        end if;
+    end process;
+end Behavioral;
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+entity mux_8to1 is
+    generic(bit_width:integer:=4);
+    port(din0:in std_logic_vector(bit_width-1 downto 0);
+        din1:in std_logic_vector(bit_width-1 downto 0);
+        din2:in std_logic_vector(bit_width-1 downto 0);
+        din3:in std_logic_vector(bit_width-1 downto 0);
+        din4:in std_logic_vector(bit_width-1 downto 0);
+        din5:in std_logic_vector(bit_width-1 downto 0);
+        din6:in std_logic_vector(bit_width-1 downto 0);
+        din7:in std_logic_vector(bit_width-1 downto 0);
+        sel:in std_logic_vector(2 downto 0);
+        dout:out std_logic_vector(bit_width-1 downto 0));
+end mux_8to1;        
+        
+architecture dataflow of mux_8to1 is
+begin
+    with sel select
+        dout <= din0 when "000",
+                din1 when "001",
+                din2 when "010",
+                din3 when "011",
+                din4 when "100",
+                din5 when "101",
+                din6 when "110",
+                din7 when others;
+end dataflow;      
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;    
+
+entity reg_file is
+ port(clk,rst,we:in std_logic;
+      addr:in std_logic_vector(2 downto 0);
+      din:in std_logic_vector(3 downto 0);
+      dout:out std_logic_vector(3 downto 0));
+end reg_file;
+
+architecture structural of reg_file is
+    component reg_module is
+    generic(reg_size:integer:=4);
+    port(din    :in std_logic_vector(reg_size-1 downto 0);
+        clk,rst,we:in std_logic;
+        dout    :inout std_logic_vector(reg_size-1 downto 0));
+    end component;
+    
+    component decoder_3to8 is
+    port(din: in std_logic_vector(2 downto 0);        
+        en: in std_logic;
+        dout: out std_logic_vector(7 downto 0));
+    end component;
+    
+   component mux_8to1 is
+   generic(bit_width:integer:=4);
+   port(din0:in std_logic_vector(bit_width-1 downto 0);
+        din1:in std_logic_vector(bit_width-1 downto 0);
+        din2:in std_logic_vector(bit_width-1 downto 0);
+        din3:in std_logic_vector(bit_width-1 downto 0);
+        din4:in std_logic_vector(bit_width-1 downto 0);
+        din5:in std_logic_vector(bit_width-1 downto 0);
+        din6:in std_logic_vector(bit_width-1 downto 0);
+        din7:in std_logic_vector(bit_width-1 downto 0);
+        sel:in std_logic_vector(2 downto 0);
+        dout:out std_logic_vector(bit_width-1 downto 0));
+   end component;
+   
+   Type array_8of4 is array(0 to 7) of std_logic_vector(3 downto 0);
+   Signal reg_en : std_logic_vector(7 downto 0);
+   Signal m: array_8of4;
+   
+begin   
+    dec0:decoder_3to8
+    port map(din => addr, en => we, dout => reg_en);
+    
+    reg_module_gen: for i in 0 to 7 generate
+    reg_module_inst: reg_module
+        generic map(reg_size => 4)
+        port map(din => din, clk => clk, rst => rst, we => reg_en(i), dout => m(i));
+    end generate;
+    
+    mux0: mux_8to1
+    generic map(bit_width => 4)
+    port map(
+        din0 => m(0),
+        din1 => m(1),
+        din2 => m(2),
+        din3 => m(3),
+        din4 => m(4),
+        din5 => m(5),
+        din6 => m(6),
+        din7 => m(7),
+        sel  => addr,
+        dout => dout
+    );
+
+end architecture structural;

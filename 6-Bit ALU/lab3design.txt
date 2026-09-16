@@ -1,0 +1,223 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+
+entity logic_unit is
+    generic(n: integer := 6);
+    Port (sel : in STD_LOGIC_VECTOR (1 downto 0);
+            A : in STD_LOGIC_VECTOR (n-1 downto 0);
+            B : in STD_LOGIC_VECTOR (n-1 downto 0);
+            r : out STD_LOGIC_VECTOR (n-1 downto 0)
+          );
+end logic_unit;
+
+architecture Behavioral of logic_unit is
+begin
+    with sel select
+        r <= NOT A when "00",
+             A AND B when "01",
+             A OR B when "10",
+             A XOR B when "11",
+            (others => 'X') when others;        
+end Behavioral;
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
+
+entity adder is
+    generic(n: integer := 6);
+    Port (sel : in STD_LOGIC_VECTOR (3 downto 0);
+            A : in STD_LOGIC_VECTOR (5 downto 0);
+            B : in STD_LOGIC_VECTOR (5 downto 0);
+            r : out STD_LOGIC_VECTOR (5 downto 0)
+          );
+end adder;
+
+architecture Behavioral of adder is
+    signal sum : STD_LOGIC_VECTOR(6 downto 0);
+    signal diff : STD_LOGIC_VECTOR(6 downto 0);
+begin
+    sum <= ('0' & A) + ('0' & B);
+    diff <=('0' & A) - ('0' & B);
+    with sel select
+        r <=  sum(5 downto 0) when "0000",
+              "00000"&sum(6) when "0001",
+              diff(5 downto  0) when "0010",
+              "00000"&diff(6) when "0011",
+              (others => 'X') when others;        
+end Behavioral;
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
+
+entity multiplier is
+    generic(n: integer := 6);
+    Port (sel : in STD_LOGIC;
+            A : in STD_LOGIC_VECTOR (n-1 downto 0);
+            B : in STD_LOGIC_VECTOR (n-1 downto 0);
+            r : out STD_LOGIC_VECTOR (n-1 downto 0)
+          );
+end multiplier;
+
+architecture Behavioral of multiplier is
+    signal mult : unsigned(11 downto 0);
+begin
+    mult <= unsigned(A) * unsigned(B);
+    with sel select
+        r <=  std_logic_vector(mult(5 downto 0)) when '0',
+              std_logic_vector(mult(11 downto 6)) when '1',
+              (others => 'X') when others;        
+end Behavioral;
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
+
+entity shifter is
+    generic(
+        n: integer := 6;
+        m: integer := 3
+    );
+    Port (sel : in STD_LOGIC_VECTOR (1 downto 0);
+            A : in STD_LOGIC_VECTOR (n-1 downto 0);
+            B : in STD_LOGIC_VECTOR (m-1 downto 0);
+            r : out STD_LOGIC_VECTOR (n-1 downto 0)
+          );
+end shifter;
+
+architecture Behavioral of shifter is
+    signal temp0 : STD_LOGIC_VECTOR(n-1 downto 0);
+    signal temp1 : STD_LOGIC_VECTOR(n-1 downto 0);
+    signal temp2 : STD_LOGIC_VECTOR(n-1 downto 0);
+    signal shift_amount : integer range 0 to n-1;
+begin
+    shift_amount <= to_integer(unsigned(B));
+    temp0 <= std_logic_vector(shift_left(unsigned(A), shift_amount));
+    temp1 <= std_logic_vector(shift_right(unsigned(A), shift_amount));
+    temp2 <= std_logic_vector(shift_right(signed(A), shift_amount));
+    
+    with sel select
+        r <=  temp0 when "00",
+              temp0 when "01",
+              temp1 when "10",
+              temp2 when "11",
+              (others => 'X') when others;
+end Behavioral;
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+
+entity ALU is
+    port(sel : in std_logic_vector(3 downto 0);
+         A : in std_logic_vector(5 downto 0);
+         B : in std_logic_vector(5 downto 0);
+         r : out std_logic_vector(5 downto 0)
+    );
+end ALU;
+    
+architecture Behavioral of ALU is
+    component logic_unit is
+        generic(n: integer := 6);
+        Port (sel : in STD_LOGIC_VECTOR (1 downto 0);
+                A : in STD_LOGIC_VECTOR (n-1 downto 0);
+                B : in STD_LOGIC_VECTOR (n-1 downto 0);
+                r : out STD_LOGIC_VECTOR (n-1 downto 0)
+              );
+    end component;
+    
+    component adder is
+        generic(n: integer := 6);
+        Port (sel : in STD_LOGIC_VECTOR (3 downto 0);
+                A : in STD_LOGIC_VECTOR (5 downto 0);
+                B : in STD_LOGIC_VECTOR (5 downto 0);
+                r : out STD_LOGIC_VECTOR (5 downto 0)
+          );
+    end component;
+    
+    component multiplier is
+        generic(n: integer := 6);
+        Port (sel : in STD_LOGIC;
+                A : in STD_LOGIC_VECTOR (n-1 downto 0);
+                B : in STD_LOGIC_VECTOR (n-1 downto 0);
+                r : out STD_LOGIC_VECTOR (n-1 downto 0)
+         );
+    end component;
+
+    component shifter is
+        generic(
+            n: integer := 6;
+            m: integer := 3
+        );
+        Port (sel : in STD_LOGIC_VECTOR (1 downto 0);
+                A : in STD_LOGIC_VECTOR (n-1 downto 0);
+                B : in STD_LOGIC_VECTOR (m-1 downto 0);
+                r : out STD_LOGIC_VECTOR (n-1 downto 0)
+         );
+    end component;
+    
+signal adder_out, logic_out, mult_out, shift_out : std_logic_vector(5 downto 0);
+begin
+
+    U_adder: adder
+        port map (
+            sel => sel,
+            A => A,
+            B => B,
+            r => adder_out
+        );
+
+    
+    U_multiplier: multiplier
+        port map (
+            sel => sel(0),  
+            A => A,
+            B => B,
+            r => mult_out
+        );
+
+    U_logic: logic_unit
+        port map (
+            sel => sel(1 downto 0),
+            A => A,
+            B => B,
+            r => logic_out
+        );
+
+    U_shifter: shifter
+        port map (
+            sel => sel(1 downto 0),
+            A => A,
+            B => B(2 downto 0),
+            r => shift_out
+        );
+
+    with sel select
+        r <= adder_out    when "0000",
+             adder_out    when "0001",
+             adder_out    when "0010",
+             adder_out    when "0011",
+
+             mult_out     when "0100", 
+             mult_out     when "0101",
+             mult_out     when "0110", 
+             mult_out     when "0111",  
+
+             logic_out    when "1000",
+             logic_out    when "1001",
+             logic_out    when "1010",
+             logic_out    when "1011",
+
+             shift_out    when "1100",
+             shift_out    when "1101",
+             shift_out    when "1110",
+             shift_out    when "1111",
+
+             (others => 'X') when others;
+
+end Behavioral;
